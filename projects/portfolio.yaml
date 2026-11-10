@@ -1,0 +1,13 @@
+name: Portfolio Site
+slug: portfolio
+aliases: [portfolio, portfolio site, solar system, adammartinez.website]
+repository: /Users/adamxvi/Developer/Repo/portfolio
+stack: [react, react-three-fiber, vite, vercel]
+objective: 3D solar-system portfolio; ongoing visual/UX polish.
+important_directories: [src, api, public]
+docs: [README.md]
+commands:
+  build: npm run build
+allowed_commands: [npm run build, git status, git diff, git log]
+known_blockers: []
+agent_instructions: No test suite exists; verification is build + screenshot.

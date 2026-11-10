@@ -1,0 +1,21 @@
+{
+  "name": "adamos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal AI engineering orchestrator: routes tasks to agents, budgets them, verifies outcomes.",
+  "bin": { "orchestrate": "./bin/orchestrate" },
+  "scripts": {
+    "orchestrate": "node src/cli.ts",
+    "dashboard": "node src/cli.ts dashboard --open",
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.2",
+    "typescript": "~6.0.2"
+  }
+}

@@ -1,0 +1,12 @@
+name: Oro Latino Experience
+slug: oro-latino
+aliases: [oro latino, oro, jewelry store experience, la ruta, draggable chains]
+repository: /Users/adamxvi/Developer/Repo/oro-latino
+stack: [vanilla-js, canvas, es-modules]
+objective: Interactive web experience for a NYC jewelry store; draggable chains with canvas physics. Refining visual style.
+important_directories: [js, css, data]
+docs: [README.md]
+commands: {}
+allowed_commands: [git status, git diff, git log]
+known_blockers: []
+agent_instructions: No build step; serve with python3 -m http.server. Verification is manual/screenshot.

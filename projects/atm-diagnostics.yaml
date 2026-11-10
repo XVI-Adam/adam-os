@@ -1,0 +1,21 @@
+name: ATM Technician Specialist (Alex)
+slug: atm-diagnostics
+aliases: [alex, atm, atm diagnostics, atm technician, elevenlabs agent]
+repository: /Users/adamxvi/Developer/Repo/ATM Diagnostics
+stack: [nextjs, typescript, vercel, neon, drizzle, elevenlabs, vitest]
+objective: >
+  Voice agent that walks ATM field technicians through diagnostics across Hyosung,
+  Diebold, NCR, Genmega, Triton. Diagnostic trees live in Postgres and are served one
+  step at a time through webhook tools.
+important_directories: [agent, app/api/tools, db, evals, tests]
+key_files: [agent/config.ts, db/schema.ts, db/seed.ts]
+docs: [README.md]
+commands:
+  test: npm test
+  typecheck: npm run typecheck
+  build: npm run build
+allowed_commands: [npm test, npm run typecheck, npm run build, git status, git diff, git log, npm run agent:audit]
+known_blockers:
+  - Placeholder diagnostics need replacing with real service-manual data (primary bottleneck).
+architecture_notes: Config-as-code pipeline (agent/pull.ts, agent/sync.ts) already working.
+agent_instructions: Do not run agent:sync (it pushes to ElevenLabs). Do not run db:migrate against production.

@@ -1,0 +1,11 @@
+name: AI Jewelry Shopping Assistant
+slug: jewelry-assistant
+aliases: [jewelry assistant, jewelry chatbot, gemini jewelry, taipy]
+repository: /Users/adamxvi/Developer/Repo/gemini-jewelry-chatbot
+stack: [python, gemini, taipy, firestore]
+objective: Conversational shopping assistant for a jewelry store with inventory, cart and image generation.
+important_directories: [.]
+docs: [README.md]
+commands: {}
+allowed_commands: [git status, git diff, git log, python3 -m py_compile]
+known_blockers: [python 3.9 on this machine]

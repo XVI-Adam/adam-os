@@ -1,0 +1,17 @@
+# AdamOS orchestrator configuration.
+# API keys are never stored here. They are read from AdamOS/.env first, then from
+# the env_files below (existing project .env files), first match wins.
+env_files:
+  - ../Ffind Technical/.env            # GROQ_API_KEY
+  - ../gemini-jewelry-chatbot/.env     # GEMINI_API_KEY
+
+# Where task records and the event log live (relative to this file).
+data_dir: data
+
+# Default budget applied when the CLI does not override it.
+default_budget:
+  max_cost_usd: 2.00
+  max_agent_calls: 8
+  max_retries: 2
+  max_tool_calls: 120
+  max_wall_clock_minutes: 45

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "adamos-dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["src/cli.ts", "dashboard", "--port", "4646"],
+      "port": 4646
+    }
+  ]
+}

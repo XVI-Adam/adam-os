@@ -1,0 +1,17 @@
+name: BodyCraft
+slug: bodycraft
+aliases: [bodycraft, body craft, calisthenics app, battles arena, skill road]
+repository: /Users/adamxvi/Developer/Repo/BodyCraft
+stack: [flutter, dart, firebase, firestore, pwa, ios]
+objective: Calisthenics training PWA with a 117-workout library, Battles Arena and Skill Road; deployed as PWA and iOS.
+important_directories: [lib, test, web, ios, docs]
+key_files: [pubspec.yaml, firebase.json, deploy.sh, AGENTS.md]
+docs: [README.md, AGENTS.md]
+commands:
+  test: flutter test
+  typecheck: flutter analyze
+  build: flutter build web
+allowed_commands: [flutter test, flutter analyze, flutter build web, git status, git diff, git log]
+known_blockers: []
+architecture_notes: Firestore rules in firestore.rules; deploy.sh handles hosting.
+agent_instructions: Do not run deploy.sh. Do not modify firestore.rules without a review step.

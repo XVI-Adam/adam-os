@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AdamOS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M9 23 16 8l7 15M12 18h8' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-title">
+      <h1>AdamOS</h1>
+      <span id="today-date" class="muted"></span>
+    </div>
+    <div class="top-status">
+      <div id="providers" class="chips" aria-label="Provider health"></div>
+      <button id="recheck" class="btn ghost small" type="button" title="Re-probe every provider (same as `orchestrate doctor`)">Re-check</button>
+      <span id="sync" class="sync muted" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid two">
+      <section class="card" aria-labelledby="h-brief">
+        <div class="card-head">
+          <div>
+            <h2 id="h-brief">Start here</h2>
+            <p id="brief-meta" class="muted small">Scanning projects…</p>
+          </div>
+          <div class="actions">
+            <button id="brief-rescan" class="btn ghost small" type="button" title="Re-read git state in every project (about a second, runs nothing)">Rescan</button>
+            <button id="brief-tests" class="btn small" type="button" title="Also run each project's test command (same as `orchestrate brief`)">Run tests</button>
+          </div>
+        </div>
+        <ol id="brief-top" class="brief"></ol>
+        <details id="brief-rest-wrap" class="more" hidden>
+          <summary><span id="brief-rest-label"></span></summary>
+          <ul id="brief-rest" class="rest"></ul>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="h-focus">
+        <div class="card-head">
+          <div>
+            <h2 id="h-focus">Today</h2>
+            <p id="focus-meta" class="muted small"></p>
+          </div>
+        </div>
+        <ul id="focus-list" class="focus"></ul>
+        <form id="focus-form" class="inline-form" autocomplete="off">
+          <input id="focus-text" type="text" maxlength="300" placeholder="Add something to do today" aria-label="Add something to do today">
+          <button class="btn small" type="submit">Add</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="h-new">
+      <div class="card-head">
+        <div>
+          <h2 id="h-new">Hand a task to the orchestrator</h2>
+          <p class="muted small">Routing is decided in code before anything runs. Preview shows the plan without spending anything.</p>
+        </div>
+      </div>
+      <form id="task-form" class="composer" autocomplete="off">
+        <textarea id="task-desc" rows="2" maxlength="8000" placeholder="e.g. Fix the failing vitest suite in Ask Adam" aria-label="Task description" required></textarea>
+        <div class="composer-row">
+          <label>Project
+            <select id="task-project"><option value="">Infer from text</option></select>
+          </label>
+          <label>Tier
+            <select id="task-tier">
+              <option value="">Auto</option>
+              <option value="light">Light</option>
+              <option value="standard">Standard</option>
+              <option value="strong">Strong</option>
+            </select>
+          </label>
+          <label>Max cost ($)
+            <input id="task-budget" type="number" min="0.05" max="100" step="0.25" inputmode="decimal">
+          </label>
+          <label>Max agent calls
+            <input id="task-calls" type="number" min="1" max="200" step="1" inputmode="numeric">
+          </label>
+          <div class="composer-buttons">
+            <button id="task-preview" class="btn ghost" type="button">Preview route</button>
+            <button id="task-run" class="btn primary" type="submit">Run task</button>
+          </div>
+        </div>
+        <div id="task-msg" class="form-msg" role="status" hidden></div>
+        <div id="route-preview" class="route" hidden></div>
+      </form>
+    </section>
+
+    <section aria-labelledby="h-active">
+      <div class="section-head">
+        <h2 id="h-active">Running now</h2>
+        <span id="active-count" class="muted small"></span>
+      </div>
+      <div id="active" class="stack"></div>
+    </section>
+
+    <section aria-labelledby="h-projects">
+      <div class="section-head">
+        <h2 id="h-projects">Projects</h2>
+        <span class="muted small">most recently touched first</span>
+      </div>
+      <div id="projects" class="grid projects"></div>
+    </section>
+
+    <div class="grid two">
+      <section class="card" aria-labelledby="h-capacity">
+        <div class="card-head">
+          <div>
+            <h2 id="h-capacity">Model capacity today</h2>
+            <p id="capacity-meta" class="muted small"></p>
+          </div>
+        </div>
+        <div id="tiers" class="tiers"></div>
+        <div id="models" class="models"></div>
+        <div id="groq"></div>
+      </section>
+
+      <section class="card" aria-labelledby="h-score">
+        <div class="card-head">
+          <div>
+            <h2 id="h-score">Scorecard</h2>
+            <p class="muted small">Every task the orchestrator has run, all time.</p>
+          </div>
+        </div>
+        <div id="tiles" class="tiles"></div>
+        <div id="outcomes"></div>
+        <div id="failure-modes"></div>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="h-history">
+      <div class="card-head">
+        <div>
+          <h2 id="h-history">History</h2>
+          <p id="history-meta" class="muted small"></p>
+        </div>
+      </div>
+      <div id="history" class="table-wrap"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

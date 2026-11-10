@@ -1,0 +1,14 @@
+name: ShopAtlas
+slug: shop-atlas
+aliases: [shopatlas, shop atlas, x402, hackathon shopping]
+repository: /Users/adamxvi/Developer/Repo/shop-atlas
+stack: [nextjs, supabase, tavily, x402, coinbase]
+objective: Agentic shopping assistant from the Microsoft x Coinbase x Tavily hackathon.
+important_directories: [app, components, lib, utils]
+docs: [README.md]
+commands:
+  typecheck: npm run typecheck
+  lint: npm run lint
+  build: npm run build
+allowed_commands: [npm run typecheck, npm run lint, npm run build, git status, git diff, git log]
+known_blockers: []

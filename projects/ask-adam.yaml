@@ -1,0 +1,49 @@
+name: Ask Adam
+slug: ask-adam
+aliases: [ask adam, askadam, ffind, jd fit rater, fit rater, recruiter chat]
+repository: /Users/adamxvi/Developer/Repo/Ffind Technical
+stack: [react, typescript, vite, vercel-edge-functions, groq, vitest]
+objective: >
+  Recruiter-facing AI chat that pitches Adam as a candidate, plus a JD Fit Rater.
+  Must never invent facts: every claim is grounded in FACTS.md.
+important_directories: [api, src/data, src/hooks, evals/src, evals/cases]
+key_files:
+  - api/chat.ts
+  - api/fit.ts
+  - src/data/context.ts
+  - FACTS.md
+  - evals/src/groq.ts
+  - evals/expected_failures.json
+docs: [README.md, docs/ARCHITECTURE.md, docs/API.md, evals/README.md]
+commands:
+  test: npm test
+  typecheck: npx tsc -b
+  lint: npm run lint
+  build: npm run build
+  deploy: vercel --prod
+eval:
+  # Deterministic-only run stays under Groq's 200k tokens/day cap (~178k cold).
+  # A judged run (~264k) cannot finish in one day. Filter to failing cases when iterating.
+  command: npm run eval -- --deterministic-only --json
+  filter_flag: --filter=
+  results_dir: evals/results
+  baseline: evals/baseline.json
+  expected_failures: evals/expected_failures.json
+  daily_token_cap: 200000
+  estimated_full_run_tokens: 178000
+  cost_command: npm run eval:cost
+allowed_commands: [npm test, npx tsc, npm run lint, npm run build, npm run eval, npm run eval:cost, npm run eval:regrade, git status, git diff, git log, node evals/src]
+known_blockers:
+  - evals/baseline.json is stale (records llama-3.1-8b-instant, promptHash null); regression gate is report-only until a full judged run is promoted.
+  - Groq free tier: 8k TPM, 1000 RPD, 200k TPD shared across models. One eval run per day, at most.
+  - GROQ_API_KEY lives in .env; the harness reads it directly.
+architecture_notes: >
+  api/chat.ts and api/fit.ts are Vercel Edge functions doing plain fetch to Groq
+  (model openai/gpt-oss-20b, reasoning hidden). evals/src/run.ts imports the same
+  SYSTEM_PROMPT/buildFitPrompt and grades with 4 layers (deterministic, grounded-entity,
+  abstention, LLM judge). FACTS.md yaml blocks are the truth for graders; context.ts
+  must be a subset (facts-consistency check).
+agent_instructions: >
+  Never edit FACTS.md status fields without evidence. Prompt edits must keep
+  context.ts a subset of FACTS.md. Do not hand-edit promptHash into baseline.json.
+  Never pass --no-cache to the eval. Prefer --filter=<ids> re-runs over full runs.

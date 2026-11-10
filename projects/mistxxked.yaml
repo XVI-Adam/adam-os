@@ -1,0 +1,15 @@
+name: Mistxxked Magazine
+slug: mistxxked
+aliases: [mistxxked, magazine, mistxxked magazine]
+repository: /Users/adamxvi/Developer/Repo/Mistxxked/mistxxked-web
+stack: [nextjs-15, sanity, vercel, drizzle, typescript]
+objective: "Magazine site with automated Instagram/TikTok content sync. Remaining: domain, payment processor, TikTok API timing, watermark automation."
+important_directories: [app, components, lib, sanity]
+docs: [README.md, AGENTS.md, CLAUDE.md, EDITORS.md]
+commands:
+  typecheck: npm run typecheck
+  lint: npm run lint
+  build: npm run build
+allowed_commands: [npm run typecheck, npm run lint, npm run build, git status, git diff, git log]
+known_blockers: [domain not purchased, payment processor undecided, TikTok API timing, watermark automation]
+agent_instructions: Do not run db:push against production.
