@@ -543,7 +543,9 @@ async function loadFocus() {
 }
 
 function init() {
-  $('#today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  // Re-stamped on a timer: this tab may stay open across midnight.
+  const stampDate = () => { $('#today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }); };
+  stampDate();
   $('#task-form').addEventListener('submit', runTask);
   $('#task-preview').addEventListener('click', previewRoute);
   $('#task-desc').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#task-form').requestSubmit(); });
@@ -570,7 +572,7 @@ function init() {
     if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) { e.preventDefault(); $('#task-desc').focus(); }
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadState(); loadFocus(); loadBrief(false); } });
-  setInterval(() => { tickSync(); if (S.brief) renderBrief(); }, 15_000);
+  setInterval(() => { tickSync(); stampDate(); if (S.brief) renderBrief(); }, 15_000);
   setInterval(() => { if (!document.hidden) loadBrief(false); }, 5 * MIN);
   loadState(); loadFocus(); loadBrief(false);
 }

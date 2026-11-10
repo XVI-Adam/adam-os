@@ -31,6 +31,11 @@ const STATIC: Record<string, { file: string; type: string }> = {
 
 const BRIEF_TTL_MS = 5 * 60_000;
 const CAPACITY_TTL_MS = 10_000;
+const PROJECTS_TTL_MS = 30_000;
+/** A dashboard that has been up since login re-probes providers once their health is this old (only while the page is open). */
+const AUTO_PROBE_AFTER_MS = 4 * 60 * 60_000;
+/** Floor between unasked probes, so a probe that cannot record its result is not retried on every poll. */
+const AUTO_PROBE_MIN_GAP_MS = 10 * 60_000;
 const GROQ_DAILY_TOKEN_CAP = 200_000;
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -42,8 +47,8 @@ export interface DashboardDeps {
   makeRegistry?: () => ProviderRegistry;
   /** Starts a saved task in the background. Default: detached `cli.ts run --resume-id <id>`. */
   launch?: (task: TaskRecord, store: Store) => void;
-  /** Probe stale provider health when the server starts (default true). */
-  probeOnStart?: boolean;
+  /** Probe provider health unasked: at start, and again when it has gone stale while the page is open (default true). */
+  autoProbe?: boolean;
 }
 
 class HttpError extends Error {
@@ -162,7 +167,7 @@ interface BriefSnapshot {
 
 /** Keeps the latest brief in memory; fast scans are awaited, test runs happen in the background. */
 class BriefService {
-  private projects: Project[];
+  private projects: () => Project[];
   private dataDir: string;
   private current: BriefSnapshot | undefined;
   private fast: Promise<BriefSnapshot> | undefined;
@@ -170,10 +175,10 @@ class BriefService {
   private fullStartedAt: number | undefined;
   private lastError: string | undefined;
 
-  constructor(projects: Project[], dataDir: string) { this.projects = projects; this.dataDir = dataDir; }
+  constructor(projects: () => Project[], dataDir: string) { this.projects = projects; this.dataDir = dataDir; }
 
   private async scan(runTests: boolean): Promise<BriefSnapshot> {
-    const b = await runBrief(this.projects, { runTests, cachedTestsOnly: !runTests, showAll: false, dataDir: this.dataDir, save: runTests });
+    const b = await runBrief(this.projects(), { runTests, cachedTestsOnly: !runTests, showAll: false, dataDir: this.dataDir, save: runTests });
     const snap: BriefSnapshot = { date: b.date, generatedAt: Date.now(), tests: runTests ? 'run' : 'cached', top: b.top, all: b.all, scans: b.scans.map(slimScan) };
     this.current = snap;
     this.lastError = undefined;
@@ -229,17 +234,33 @@ interface TaskBody { description?: string; project?: string; outcome?: string; t
 export function createDashboardServer(deps: DashboardDeps = {}): Server {
   const dataDir = deps.dataDir ?? loadConfig().dataDir;
   const store = deps.store ?? new Store(dataDir);
-  const projects = deps.projects ?? loadProjects();
+  // Re-read projects/*.yaml periodically: the server may stay up for days, and adding a project should not need a restart.
+  let projectsCache: { at: number; value: Project[] } | undefined;
+  const getProjects = (): Project[] => {
+    if (deps.projects) return deps.projects;
+    if (!projectsCache || Date.now() - projectsCache.at > PROJECTS_TTL_MS) {
+      try { projectsCache = { at: Date.now(), value: loadProjects() }; }
+      catch (e) { if (!projectsCache) throw e; /* a half-saved yaml file: keep serving the last good set */ }
+    }
+    return projectsCache!.value;
+  };
+  const autoProbe = deps.autoProbe !== false;
+  let lastAutoProbeAt = 0;
   const makeRegistry = deps.makeRegistry ?? (() => new ProviderRegistry(undefined, dataDir));
   const launch = deps.launch ?? defaultLaunch;
   const focus = new FocusStore(dataDir);
-  const brief = new BriefService(projects, dataDir);
+  const brief = new BriefService(getProjects, dataDir);
   let probing: Promise<unknown> | undefined;
   let capacityCache: { at: number; value: Record<string, unknown> } | undefined;
 
   const probe = (force: boolean): Promise<unknown> => {
     probing ??= makeRegistry().checkHealth(force).catch(() => undefined).finally(() => { probing = undefined; capacityCache = undefined; });
     return probing;
+  };
+
+  const healthStale = (): boolean => {
+    const checks = Object.values(capacity().providers as Record<string, { checkedAt: string }>);
+    return checks.length === 0 || checks.some((h) => Date.now() - Date.parse(h.checkedAt) > AUTO_PROBE_AFTER_MS);
   };
 
   const capacity = (): Record<string, unknown> => {
@@ -280,7 +301,7 @@ export function createDashboardServer(deps: DashboardDeps = {}): Server {
       return createTask({
         description, project: body.project || undefined, desiredOutcome: body.outcome?.trim() || undefined,
         tier: (body.tier as Tier | undefined) || undefined, budget: parseBudget(body),
-      }, projects);
+      }, getProjects());
     } catch (e) {
       if (e instanceof HttpError) throw e;
       throw new HttpError(400, (e as Error).message);
@@ -303,6 +324,7 @@ export function createDashboardServer(deps: DashboardDeps = {}): Server {
     if (method === 'GET' && path === '/api/state') {
       const tasks = store.listTasks();
       const now = Date.now();
+      if (autoProbe && !probing && now - lastAutoProbeAt > AUTO_PROBE_MIN_GAP_MS && healthStale()) { lastAutoProbeAt = now; void probe(false); }
       const perProject = new Map<string, { tasks: number; active: number; lastOutcome?: string }>();
       for (const t of [...tasks].reverse()) {
         const p = perProject.get(t.project) ?? { tasks: 0, active: 0 };
@@ -318,7 +340,7 @@ export function createDashboardServer(deps: DashboardDeps = {}): Server {
         analytics: computeAnalytics(tasks),
         capacity: capacity(),
         probing: Boolean(probing),
-        projects: projects.map((p) => ({
+        projects: getProjects().map((p) => ({
           slug: p.slug, name: p.name, repository: p.repository, stack: p.stack, objective: p.objective,
           commands: Object.keys(p.commands), hasEval: Boolean(p.eval), knownBlockers: p.knownBlockers,
           ...(perProject.get(p.slug) ?? { tasks: 0, active: 0 }),
@@ -422,14 +444,26 @@ export function createDashboardServer(deps: DashboardDeps = {}): Server {
     });
   });
 
-  if (deps.probeOnStart !== false) void probe(false);
+  // Only once the port is ours: a second copy that loses the port should not spend a probe on its way out.
+  if (autoProbe) server.once('listening', () => { lastAutoProbeAt = Date.now(); void probe(false); });
   return server;
 }
 
 export function startDashboard(port = 4646, opts: { open?: boolean } = {}): Server {
   const server = createDashboardServer();
   const url = `http://localhost:${port}`;
+  const openBrowser = (): void => {
+    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+    spawn(cmd, [url], { stdio: 'ignore', detached: true }).on('error', () => { /* no opener available: the URL is printed */ }).unref();
+  };
   server.on('error', (e: NodeJS.ErrnoException) => {
+    if (e.code === 'EADDRINUSE' && opts.open) {
+      // Usually the login agent (`orchestrate autostart`) already has it up: show that one instead of failing.
+      console.log(`port ${port} is already in use — opening the dashboard that is already running at ${url}`);
+      openBrowser();
+      setTimeout(() => process.exit(0), 200);
+      return;
+    }
     if (e.code === 'EADDRINUSE') console.error(`port ${port} is already in use — the dashboard may already be running at ${url} (or pass --port)`);
     else console.error(`dashboard error: ${e.message}`);
     process.exit(1);
@@ -437,10 +471,7 @@ export function startDashboard(port = 4646, opts: { open?: boolean } = {}): Serv
   // Loopback only: this server starts agents and is not meant to be reachable from the network.
   server.listen(port, '127.0.0.1', () => {
     console.log(`AdamOS dashboard → ${url}`);
-    if (opts.open) {
-      const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
-      spawn(cmd, [url], { stdio: 'ignore', detached: true }).on('error', () => { /* no opener available: the URL is printed above */ }).unref();
-    }
+    if (opts.open) openBrowser();
   });
   return server;
 }

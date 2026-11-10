@@ -32,6 +32,8 @@ const HELP = `orchestrate — personal AI engineering orchestrator
   orchestrate routing <id|prefix>                    every routing decision a task made, with eliminations
   orchestrate projects | agents | workflows          registries
   orchestrate dashboard [--port 4646] [--open]       daily dashboard: brief, today list, launch + watch tasks (localhost only)
+  orchestrate autostart install|uninstall|status [--port 4646]
+                                                     start the dashboard at login (macOS launchd agent)
 `;
 
 interface Parsed { cmd: string; positional: string[]; flags: Record<string, string | boolean> }
@@ -48,7 +50,7 @@ function parse(argv: string[]): Parsed {
       else flags[k] = true;
     } else positional.push(a);
   }
-  const known = ['brief', 'route', 'status', 'history', 'show', 'events', 'pause', 'resume', 'stop', 'replan', 'analytics', 'doctor', 'projects', 'agents', 'workflows', 'dashboard', 'run', 'help', 'simulate', 'routing'];
+  const known = ['brief', 'route', 'status', 'history', 'show', 'events', 'pause', 'resume', 'stop', 'replan', 'analytics', 'doctor', 'projects', 'agents', 'workflows', 'dashboard', 'autostart', 'run', 'help', 'simulate', 'routing'];
   const cmd = positional.length && known.includes(positional[0]) ? positional.shift()! : 'run';
   return { cmd, positional, flags };
 }
@@ -177,6 +179,16 @@ async function main(): Promise<void> {
   }
 
   if (cmd === 'analytics') { console.log(JSON.stringify(computeAnalytics(store.listTasks()), null, 2)); return; }
+
+  if (cmd === 'autostart') {
+    const { installAutostart, uninstallAutostart, autostartStatus } = await import('./dashboard/autostart.ts');
+    const action = positional[0] ?? 'status';
+    if (action === 'install') console.log(await installAutostart(Number(flags.port ?? 4646)));
+    else if (action === 'uninstall') console.log(uninstallAutostart());
+    else if (action === 'status') console.log(autostartStatus());
+    else throw new Error(`autostart takes install, uninstall or status (got '${action}')`);
+    return;
+  }
 
   if (cmd === 'dashboard') {
     const { startDashboard } = await import('./dashboard/server.ts');

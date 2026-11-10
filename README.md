@@ -46,6 +46,23 @@ page to work out of for the day:
 - **Scorecard and history** — outcomes, cost per verified success, failure modes,
   and per-task steps and verification results.
 
+### Start at login (macOS)
+
+```bash
+node src/cli.ts autostart install     # writes ~/Library/LaunchAgents/com.adamos.dashboard.plist and starts it
+node src/cli.ts autostart status      # installed? running? where is the log?
+node src/cli.ts autostart uninstall   # stop it and remove the agent
+```
+
+The agent runs the dashboard in the background from login on, restarts it if it
+exits with an error, and logs to `data/logs/dashboard.log`. It does not open a
+browser window; bookmark http://localhost:4646, or run `npm run dashboard`, which
+opens the copy that is already running. The node binary and `PATH` are captured
+when you install, so run `autostart install` again after switching node versions
+or moving this folder (it is also how you restart the server after pulling code).
+While the page is open, provider health is re-probed once it is more than four
+hours old.
+
 The server binds to 127.0.0.1 and refuses cross-origin or non-JSON writes: it can
 start agents that edit your repositories, so only pages it served itself may ask.
 The page is plain HTML/CSS/JS in `src/dashboard/public/` with no build step.

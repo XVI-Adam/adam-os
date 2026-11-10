@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { IncomingMessage, Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { test } from 'node:test';
+import { LABEL, cleanPath, renderPlist } from '../src/dashboard/autostart.ts';
 import { FocusStore } from '../src/dashboard/focus.ts';
 import { checkRequest, createDashboardServer } from '../src/dashboard/server.ts';
 import type { TaskRecord } from '../src/types.ts';
@@ -14,7 +15,7 @@ async function withServer(fn: (ctx: { base: string; launched: TaskRecord[]; stor
   const project = tmpGitProject();
   const launched: TaskRecord[] = [];
   const server: Server = createDashboardServer({
-    store, dataDir: store.dir, projects: [project], probeOnStart: false,
+    store, dataDir: store.dir, projects: [project], autoProbe: false,
     makeRegistry: () => registryWith(new FakeProvider([], 'fake', 'light')),
     launch: (task) => { launched.push(task); },
   });
@@ -166,4 +167,20 @@ test('focus endpoints add, complete and remove items', async () => {
     assert.deepEqual(((await removed.json()) as { items: unknown[] }).items, []);
     assert.equal((await post(`${base}/api/focus`, { text: '' })).status, 400);
   });
+});
+
+test('autostart plist runs the dashboard command with the captured node and PATH, escaped for XML', () => {
+  const plist = renderPlist({ port: 4700, node: '/opt/node/bin/node', root: '/Users/me/R&D/AdamOS', path: '/opt/node/bin:/usr/bin', logPath: '/Users/me/R&D/AdamOS/data/logs/dashboard.log' });
+  assert.ok(plist.includes(`<string>${LABEL}</string>`));
+  const args = [...plist.split('<key>ProgramArguments</key>')[1].split('</array>')[0].matchAll(/<string>(.*?)<\/string>/g)].map((m) => m[1]);
+  assert.deepEqual(args, ['/opt/node/bin/node', '/Users/me/R&amp;D/AdamOS/src/cli.ts', 'dashboard', '--port', '4700']);
+  assert.ok(plist.includes('<key>WorkingDirectory</key>\n  <string>/Users/me/R&amp;D/AdamOS</string>'));
+  assert.ok(plist.includes('<key>PATH</key>\n    <string>/opt/node/bin:/usr/bin</string>'));
+  assert.ok(plist.includes('<key>RunAtLoad</key>\n  <true/>'));
+  assert.ok(!plist.includes('--open'), 'logging in should not pop a browser window');
+});
+
+test('cleanPath keeps existing directories once, in order', () => {
+  const exists = (d: string) => d !== '/gone';
+  assert.equal(cleanPath('/a:/b:/a::/gone:/c', exists), '/a:/b:/c');
 });
